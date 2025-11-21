@@ -22,20 +22,33 @@ ACCESS_MIN = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
 # 初始化 Firebase Admin SDK
 try:
-    # 嘗試從環境變數或服務帳號檔案初始化
-    firebase_cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
-    if firebase_cred_path and os.path.exists(firebase_cred_path):
-        cred = credentials.Certificate(firebase_cred_path)
-        firebase_admin.initialize_app(cred)
-        print("✅ Firebase Admin SDK 已初始化（使用服務帳號檔案）")
-    else:
-        # 如果沒有提供憑證檔案，嘗試使用預設應用（適用於部署環境）
+    # 優先從環境變數讀取（適用於 Vercel 等部署環境）
+    firebase_cred_json = os.getenv("FIREBASE_CREDENTIALS")
+    if firebase_cred_json:
+        import json
         try:
-            firebase_admin.initialize_app()
-            print("✅ Firebase Admin SDK 已初始化（使用預設憑證）")
-        except ValueError:
-            # 如果已經初始化過，忽略錯誤
-            print("⚠️  Firebase Admin SDK 可能已初始化或缺少憑證")
+            cred_dict = json.loads(firebase_cred_json)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase Admin SDK 已初始化（使用環境變數）")
+        except json.JSONDecodeError:
+            print("⚠️  FIREBASE_CREDENTIALS 環境變數格式錯誤，嘗試其他方式")
+            raise
+    else:
+        # 嘗試從檔案讀取（本地開發）
+        firebase_cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
+        if firebase_cred_path and os.path.exists(firebase_cred_path):
+            cred = credentials.Certificate(firebase_cred_path)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase Admin SDK 已初始化（使用服務帳號檔案）")
+        else:
+            # 使用預設應用（適用於某些部署環境，如 Google Cloud）
+            try:
+                firebase_admin.initialize_app()
+                print("✅ Firebase Admin SDK 已初始化（使用預設憑證）")
+            except ValueError:
+                # 如果已經初始化過，忽略錯誤
+                print("⚠️  Firebase Admin SDK 可能已初始化或缺少憑證")
 except Exception as e:
     print(f"⚠️  Firebase Admin SDK 初始化失敗: {e}")
     print("   將使用傳統 JWT 驗證作為後備")
