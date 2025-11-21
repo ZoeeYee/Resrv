@@ -41,8 +41,12 @@ def favicon():
 
 @app.on_event("startup")
 def on_startup():
-    init_engine()
-    Base.metadata.create_all(bind=get_engine())
+    try:
+        init_engine()
+        Base.metadata.create_all(bind=get_engine())
+    except Exception as e:
+        print(f"⚠️  資料庫初始化警告: {e}")
+        # 在 Serverless 環境中，資料庫可能無法立即初始化，這是正常的
 
 # Routers
 app.include_router(auth.router)
